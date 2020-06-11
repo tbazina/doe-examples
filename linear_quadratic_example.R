@@ -30,85 +30,112 @@ dat <- dat %>%
   sample_n(n()) %>%
   mutate(chick = 1:n()) %>%
   select(chick, day, weight)
+dat %>%
+  write.table(file = 'CRD_Chick_18_3_6_results.csv', sep = ';', dec = ',')
 exp.design <- dat %>% select(-weight)
 exp.design %>%
   write.table(file = 'CRD_Chick_18_3_6.csv', sep = ";", dec = ",")
 
 ################################################################################
 # EDA
+## Average, sd
+dat %>% group_by(day) %>% summarise(
+  mean = mean(weight),
+  sd = sd(weight)
+) %>% View()
 ## Histogram
 dat %>%
   ggplot(aes(x=weight)) +
-  geom_histogram(binwidth = 3,
-                 color="black", fill="dodgerblue3"
+  geom_histogram(bins = 5,
+                 color="black", fill="dodgerblue3",
                  ) +
   geom_vline(aes(xintercept=mean(weight)), linetype="dashed", size=1) +
   theme(
     axis.line = element_line(size=0.5, colour = "black")
   )
   
-## Scatter plot
-dat %>%
+qqnorm()
+
+## DoE Scatter plot
+dat %>% mutate(mean = mean(weight)) %>%
   ggplot(aes(x = day, y = weight)) +
   geom_point(
-    shape = 21, colour = "black", fill = "dodgerblue4", size = 2, stroke = 0.3) +
-  ggtitle("Scatter plot") +
+    shape = 21, colour = "black", fill = "dodgerblue4", size = 1.5, stroke = 0.3) +
+  geom_hline(aes(yintercept = mean)) +
+  scale_y_continuous(
+    name = 'Masa [g]',
+    breaks = seq(0, 400, 50),
+    limits = c(0, NA)
+  ) +
+  scale_x_continuous(
+    name = "Dan vaganja [ / ]",
+    breaks = seq(0, 20, 10)) +
+  ggtitle("DoE dijagram rasipanja") +
   theme(
-    axis.line = element_line(size=0.5, colour = "black")
+    axis.line = element_line(size=0.5, colour = "black"),
+    plot.title = element_text(hjust = 0.5)
   )
+ggsave(filename = 'slike/doe_scatter_plot.png',
+       width = 8, height = 8, units = 'cm', dpi = 320)
 
 ## DoE mean plot
 dat %>% 
   group_by(day) %>% summarise(weight.mean = mean(weight)) %>%
   ggplot(aes(x = day, y = weight.mean)) +
   geom_point(
-    shape = 21, colour = "black", fill = "dodgerblue4", size = 4, stroke = 1) +
+    shape = 21, colour = "black", fill = "dodgerblue4", size = 2, stroke = 1) +
   geom_line(
     color = 'black',
     linetype = '1434',
     size = 0.9) +
   scale_y_continuous(
-    name = 'Weight Mean',
+    name = 'Prosjek mase [g]',
     breaks = seq(0, 400, 50),
     limits = c(0, NA)
   ) +
   scale_x_continuous(
-    name = "Day",
+    name = "Dan vaganja [ / ]",
     breaks = seq(0, 20, 10)) +
-  ggtitle("DoE mean plot") +
+  ggtitle("DoE dijagram prosjeka") +
   theme(
-    axis.line = element_line(size=0.5, colour = "black")
+    axis.line = element_line(size=0.5, colour = "black"),
+    plot.title = element_text(hjust = 0.5)
   )
+ggsave(filename = 'slike/doe_mean_plot.png',
+       width = 8, height = 8, units = 'cm', dpi = 320)
 
 ## DOE Standard Deviation Plot
 dat %>% 
   group_by(day) %>% summarise(weight.sd = sd(weight)) %>%
   ggplot(aes(x = day, y = weight.sd)) +
   geom_point(
-    shape = 21, colour = "black", fill = "dodgerblue4", size = 4, stroke = 1) +
+    shape = 21, colour = "black", fill = "dodgerblue4", size = 2, stroke = 1) +
   geom_line(
     color = 'black',
     linetype = '1434',
     size = 0.9) +
   scale_y_continuous(
-    name = 'Weight Standard Deviation',
+    name = 'Standardna devijacija mase [g]',
     breaks = seq(0, 40, 5),
     limits = c(0, NA)
   ) +
   scale_x_continuous(
-    name = "Day",
+    name = "Dan vaganja [ / ]",
     breaks = seq(0, 20, 10)) +
-  ggtitle("DOE Standard Deviation Plot") +
+  ggtitle("DoE dijagram st. dev.") +
   theme(
-    axis.line = element_line(size=0.5, colour = "black")
+    axis.line = element_line(size=0.5, colour = "black"),
+    plot.title = element_text(hjust = 0.5)
   )
+ggsave(filename = 'slike/doe_sd_plot.png',
+       width = 8, height = 8, units = 'cm', dpi = 320)
 
 ## Q-Q plot
 dat %>%
   ggplot(aes(sample=weight)) +
   stat_qq(
     shape = 21, colour = "black", fill = "dodgerblue4", size = 2, stroke = 0.3) +
-  stat_qq_line() + theme(
+  stat_qq_line(distribution = qgeom) + theme(
     axis.line = element_line(size=0.5, colour = "black")
   )
 

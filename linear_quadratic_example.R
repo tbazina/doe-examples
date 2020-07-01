@@ -199,7 +199,6 @@ ggsave(filename = 'slike/doe_sd_plot.png',
        width = 8, height = 8, units = 'cm', dpi = 320)
 
 
-
 ## Box-plot
 dat %>% mutate(Dan = ordered(day)) %>%
   ggplot(aes(x = Dan, y = weight, fill=Dan)) +
@@ -226,6 +225,7 @@ dat %>% mutate(Dan = ordered(day)) %>%
 ggsave(filename = 'slike/box-plot.png',
        width = 12, height = 10, units = 'cm', dpi = 320)
   
+
 # Summary statistics
 dat %>% group_by(day) %>% summarise(
   min = min(weight),
@@ -238,6 +238,7 @@ dat %>% group_by(day) %>% summarise(
 
 summary(dat %>% filter(day == 10))
 
+
 # Analysis of variance and regression
 dat <- dat %>% mutate(day.sq = day^2)
 ## Linear
@@ -249,6 +250,7 @@ dat %$% aov(weight ~ day.sq + day, data = .) %>% summary()
 fit.sq <- dat %$% lm(weight ~ day.sq, data = .)
 summary(fit.sq)
 
+################################################################################
 # Visulize fit
 ## Linear fit
 dat %>%
@@ -297,7 +299,8 @@ ggsave(filename = 'slike/kvadratna_regresija_plot.png',
        width = 8, height = 8, units = 'cm', dpi = 320)
 
 
-########### Model verification
+################################################################################
+# Model verification
 dat <- dat %>%
   mutate(weight.lin = predict.lm(fit.lin),
          weight.sq = predict.lm(fit.sq),
@@ -374,30 +377,178 @@ dat %>%
 ggsave(filename = 'slike/residuals_response.png',
        width = 16, height = 8, units = 'cm', dpi = 320)
 
-
-
-dat %>% 
-  mutate(
-    # diet = as.factor(diet),
-    day.sq = day^2
-    ) %>%
-  # filter(between(chick, 34, 39) & day %in% c(0, 10, 20)) %>%
-  # group_by(diet) %>%
-  do(fitDay = lm(weight ~ day, data = .),
-     fitDay.sq = lm(weight ~ day.sq, data = .)) %>% glance(fitDay.sq) 
-  # summary(.$fitDay.sq[[1]])
-  summarise(
-    # diet = diet,
-    # chick = chick,
-    fit.day = summary(fitDay)$adj.r.squared,
-    fit.day.sq = summary(fitDay.sq)$adj.r.squared
-    )
-  # filter(fit.day.sq > fit.day)
-
-# Visualize
+## Residuals vs factors vizualization
 dat %>%
-  # filter(between(chick, 34, 39) & day %in% c(0, 10, 20)) %>%
-  mutate(chick = factor(chick, ordered=F)) %>%
-  ggplot(aes(day, weight, )) + geom_point() +
-  geom_smooth(method = "lm", formula = y ~ I(x))
+  pivot_longer(cols = c(resid.lin, resid.sq), names_to = "resid.pred",
+               values_to = "resid.val") %>%
+  ggplot(aes(x = day, y = resid.val, fill = resid.pred)) +
+  facet_grid(. ~ resid.pred,
+             labeller = labeller(
+               .cols = c(resid.lin = "Linearna regresija",
+                         resid.sq = "Polinomna regresija 2. stupnja"))
+               ) +
+  geom_point(
+    shape = 21, colour = "black", fill = "dodgerblue4", size = 1.5, stroke = 1) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black',
+    linetype = '5353',
+    size = 0.8) +
+  scale_y_continuous(
+    name = 'Rezidualna odstupanja [g]',
+    breaks = seq(-100, 100, 25),
+    # limits = c(0, NA)
+  ) +
+  scale_x_continuous(
+    name = "Dan vaganja [ / ]",
+    breaks = seq(0, 20, 5)
+    ) +
+  ggtitle("Rezidualna odstupanja - nezavisna varijabla") +
+  theme(
+    axis.line = element_line(size=0.5, colour = "black"),
+    plot.title = element_text(hjust = 0.5)
+  )
+ggsave(filename = 'slike/residuals_factors.png',
+       width = 16, height = 8, units = 'cm', dpi = 320)
 
+## Residual lag plot - linear model
+dat <- dat %>%
+  mutate(resid.lin.lag = c(tail(resid.lin, -1), 0),
+         resid.sq.lag = c(tail(resid.sq, -1), 0),
+         )
+dat %>% slice(-n()) %>%
+  ggplot(aes(x = resid.lin, y = resid.lin.lag,
+             )) +
+  geom_point(
+    shape = 21, colour = "black", fill = "dodgerblue4", size = 1.5, stroke = 1) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black',
+    linetype = '5353',
+    size = 0.8) +
+  scale_y_continuous(
+    name = 'i-ta rezidualna odstupanja [g]',
+    breaks = seq(-100, 100, 25),
+  ) +
+  scale_x_continuous(
+    name = '(i-1) rezidualna odstupanja [g]',
+    breaks = seq(-100, 100, 25),
+    ) +
+  ggtitle("Linearni model") +
+  theme(
+    axis.line = element_line(size=0.5, colour = "black"),
+    plot.title = element_text(hjust = 0.5)
+  )
+ggsave(filename = 'slike/residuals_lin_lag.png',
+       width = 8, height = 8, units = 'cm', dpi = 320)
+
+## Residual lag plot - quadratic model
+dat %>% slice(-n()) %>%
+  ggplot(aes(x = resid.sq, y = resid.sq.lag,
+             )) +
+  geom_point(
+    shape = 21, colour = "black", fill = "dodgerblue4", size = 1.5, stroke = 1) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black',
+    linetype = '5353',
+    size = 0.8) +
+  scale_y_continuous(
+    name = 'i-ta rezidualna odstupanja [g]',
+    breaks = seq(-100, 100, 25),
+  ) +
+  scale_x_continuous(
+    name = '(i-1) rezidualna odstupanja [g]',
+    breaks = seq(-100, 100, 25),
+    ) +
+  ggtitle("Polinomni model") +
+  theme(
+    axis.line = element_line(size=0.5, colour = "black"),
+    plot.title = element_text(hjust = 0.5)
+  )
+ggsave(filename = 'slike/residuals_sq_lag.png',
+       width = 8, height = 8, units = 'cm', dpi = 320)
+
+## Residual histogram
+dat %>% 
+  pivot_longer(cols = c(resid.lin, resid.sq), names_to = "resid.pred",
+               values_to = "resid.val") %>%
+  group_by(resid.pred) %>% mutate(resid.mean = mean(resid.val)) %>%
+  ungroup() %>%
+  ggplot(aes(x=resid.val, fill = resid.pred)) +
+    facet_grid(. ~ resid.pred,
+               labeller = labeller(
+                 .cols = c(resid.lin = "Linearna regresija",
+                           resid.sq = "Polinomna regresija 2. stupnja"))
+                 ) +
+    geom_histogram(aes(y = ..density.., fill = resid.val),
+                   binwidth = 15,
+                   color="black", fill="dodgerblue3",
+                   ) +
+    geom_vline(aes(xintercept=resid.mean), linetype="dashed", size=1) +
+    geom_density(alpha = 0.7, outline.type = 'full') +
+    scale_y_continuous(
+      name = 'Gustoća razdiobe',
+      # breaks = seq(0, 400, 50),
+      limits = c(0, NA)
+    ) +
+    scale_x_continuous(
+      name = "Rezidualna odstupanja [g]",
+      # breaks = seq(0, 20, 10)
+      ) +
+    scale_fill_manual(
+      values = c("yellow", "darksalmon"),
+      labels = c("Linearna", "Polinomna"),
+      name = "Procjena gustoće\nrazdiobe"
+    ) +
+    ggtitle("Gustoća razdiobe rezidualnih odstupanja") +
+    theme(
+      axis.line = element_line(size=0.5, colour = "black"),
+      plot.title = element_text(hjust = 0.5)
+    )
+ggsave(filename = 'slike/residuals_density.png',
+       width = 16, height = 9, units = 'cm', dpi = 320)
+
+## Q-Q residual plot
+dat %>%
+  pivot_longer(cols = c(resid.lin, resid.sq), names_to = "resid.pred",
+               values_to = "resid.val") %>%
+  ggplot(aes(sample=resid.val, fill = resid.pred)) +
+    facet_grid(. ~ resid.pred,
+               labeller = labeller(
+                 .cols = c(resid.lin = "Linearna regresija",
+                           resid.sq = "Polinomna regresija 2. stupnja"))
+                 ) +
+  stat_qq(
+    shape = 21, colour = "black", fill = "dodgerblue4", size = 2, stroke = 0.3,
+    ) +
+  stat_qq_line() +
+  scale_y_continuous(
+    name = 'Empirijski kvantili',
+    breaks = seq(-60, 60, 20),
+    # limits = c(0, NA)
+  ) +
+  scale_x_continuous(
+    name = "Teorijski kvantili",
+    # breaks = seq(0, 20, 10)
+    ) +
+  ggtitle("Q-Q dijagram rezidualnih odstupanja") +
+  theme(
+    axis.line = element_line(size=0.5, colour = "black"),
+    plot.title = element_text(hjust = 0.5)
+  )
+ggsave(filename = 'slike/residuals_Q-Q.png',
+       width = 16, height = 8, units = 'cm', dpi = 320)
+
+################################################################################
+# Predicting
+dat.predict <- tibble(
+  day = 0:20,
+  day.sq = day^2
+)
+dat.predict <- dat.predict %>% mutate(
+  weight.lin = predict(fit.lin, .),
+  weight.sq = predict(fit.sq, .)
+  )
+dat.predict %>%
+  write.table(file = 'CRD_Chick_18_3_6_predictions.csv', sep = ';', dec = ',')
